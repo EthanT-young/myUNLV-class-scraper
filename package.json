@@ -1,0 +1,14 @@
+{
+  "name": "unlv-class-finder",
+  "private": true,
+  "scripts": {
+    "serve": "python3 -m http.server -d site 8000",
+    "test": "playwright test && python3 -m unittest discover -s tests -t .",
+    "test:site": "playwright test",
+    "test:scraper": "python3 -m unittest discover -s tests -t ."
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0"
+  }
+}

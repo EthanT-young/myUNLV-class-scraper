@@ -1,0 +1,231 @@
+/* Colors are checked for at least 4.5:1 contrast for text and 3:1 for
+   borders/focus indicators against their backgrounds (WCAG 2.2 AA). */
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --surface: #f6f6f7;
+  --text: #1b1b1f;
+  --muted: #4f4f57;          /* 7.6:1 on --bg */
+  --border: #8a8a93;         /* 3.4:1 on --bg (non-text) */
+  --brand: #a3000f;          /* 7.9:1 on white */
+  --brand-text: #ffffff;
+  --link: #a3000f;
+  --focus: #0b57d0;          /* 6.4:1 on white */
+  --open: #146c2e;           /* 6.4:1 */
+  --closed: #a3000f;         /* 7.9:1 */
+  --wait: #7a4b00;           /* 7.0:1 */
+  --row-alt: #f6f6f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141417;
+    --surface: #1f1f24;
+    --text: #ececf0;
+    --muted: #b6b6bf;        /* 9:1 on --bg */
+    --border: #7d7d88;       /* 4.2:1 */
+    --brand: #8c0010;
+    --brand-text: #ffffff;
+    --link: #ff9a9a;         /* 8.6:1 */
+    --focus: #8ab4ff;        /* 8.7:1 */
+    --open: #7fd99a;
+    --closed: #ff9a9a;
+    --wait: #f2c46d;
+    --row-alt: #1b1b20;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: var(--link); text-underline-offset: 0.15em; }
+
+/* Visible focus on everything that can take it (2.4.7, 2.4.11, 2.4.13). */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.wrap { max-width: 80rem; margin: 0 auto; padding: 0 1rem; }
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 10;
+  background: var(--bg);
+  color: var(--link);
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--focus);
+}
+.skip-link:focus { top: 0.5rem; }
+
+.site-header { background: var(--brand); color: var(--brand-text); padding: 1rem 0; }
+.site-header h1 { margin: 0; font-size: 1.75rem; }
+.site-header .tagline { margin: 0.25rem 0 0; }
+.site-header a { color: var(--brand-text); }
+.site-header a:focus-visible { outline-color: var(--brand-text); }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+  gap: 2rem;
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+@media (max-width: 52rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+}
+
+h2 { font-size: 1.35rem; margin: 0 0 0.75rem; }
+
+/* ----- Filters ----- */
+.filters form { display: grid; gap: 1rem; }
+.field { display: grid; gap: 0.25rem; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+label, legend { font-weight: 600; }
+.hint { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.nowrap { white-space: nowrap; }
+
+input[type="search"], select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  min-height: 2.75rem;   /* comfortable target size (2.5.8) */
+  width: 100%;
+}
+textarea { resize: vertical; }
+
+fieldset { border: 1px solid var(--border); border-radius: 4px; margin: 0; padding: 0.5rem 0.75rem 0.75rem; }
+legend { padding: 0 0.25rem; }
+
+.check { display: flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; }
+.check label { font-weight: 400; cursor: pointer; }
+.check input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--brand); }
+.days { display: grid; grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr)); column-gap: 0.5rem; }
+
+.degree { border: 1px solid var(--border); border-radius: 4px; }
+.degree summary { padding: 0.75rem; font-weight: 600; cursor: pointer; min-height: 2.75rem; }
+.degree-body { display: grid; gap: 0.5rem; padding: 0 0.75rem 0.75rem; }
+
+.button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  border: 2px solid var(--brand);
+  background: var(--brand);
+  color: var(--brand-text);
+  cursor: pointer;
+}
+.button.secondary { background: transparent; color: var(--link); border-color: var(--border); }
+.button.small { min-height: 2rem; padding: 0.25rem 0.75rem; font-size: 0.9rem; }
+
+/* ----- Results ----- */
+.status { margin: 0 0 1rem; font-weight: 600; }
+.course-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.course, .course article { min-width: 0; }
+
+.course {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  background: var(--bg);
+}
+.course h3 { margin: 0; font-size: 1.15rem; }
+.course h3 .code { white-space: nowrap; }
+.course-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0.35rem 0 0.5rem; padding: 0; list-style: none; color: var(--muted); }
+.tag {
+  display: inline-block;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  margin: 0 0.25rem 0.25rem 0;
+}
+.tag.degree-tag { border-color: var(--brand); color: var(--link); font-weight: 600; }
+
+.course details { margin: 0.25rem 0 0.75rem; }
+.course summary { cursor: pointer; color: var(--link); font-weight: 600; padding: 0.25rem 0; min-height: 1.5rem; }
+.course details p { margin: 0.5rem 0; white-space: pre-line; }
+.course dl { margin: 0.5rem 0; }
+.course dt { font-weight: 600; }
+.course dd { margin: 0 0 0.5rem; white-space: pre-line; }
+.course dd, .course details p, .course h3, .tag, td { overflow-wrap: anywhere; }
+
+.match-note { margin: 0.5rem 0; color: var(--muted); font-size: 0.9rem; }
+
+/* Data tables may scroll horizontally on narrow screens (allowed by 1.4.10);
+   the wrapper is focusable so keyboard users can scroll it. */
+.table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+caption { text-align: left; padding: 0.5rem; font-weight: 600; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem; border-top: 1px solid var(--border); }
+thead th { background: var(--surface); }
+tbody tr:nth-child(even) { background: var(--row-alt); }
+td.num { font-variant-numeric: tabular-nums; }
+.sub { display: block; color: var(--muted); font-size: 0.85rem; }
+.line { display: block; }
+.line + .line { margin-top: 0.35rem; }
+.cell-label { display: none; }
+
+/* Narrow screens: each section becomes a stacked card of label/value pairs. */
+@media (max-width: 40rem) {
+  .table-scroll { overflow: visible; border: 0; }
+  .sections thead {
+    display: block; position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .sections .nowrap { white-space: normal; }
+  .sections, .sections tbody, .sections tr, .sections td, .sections caption { display: block; }
+  .sections caption { padding: 0.5rem 0; }
+  .sections tr { border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem 0; margin-bottom: 0.75rem; }
+  .sections tbody tr:nth-child(even) { background: transparent; }
+  .sections td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.5rem; border: 0; padding: 0.3rem 0.75rem; }
+  .cell-label { display: block; font-weight: 600; color: var(--muted); }
+}
+
+/* Status uses text and a distinct shape, never color alone (1.4.1). */
+.st { font-weight: 700; white-space: nowrap; }
+.st::before { display: inline-block; width: 1em; margin-right: 0.25rem; }
+.st-open { color: var(--open); }
+.st-open::before { content: "●"; }
+.st-closed { color: var(--closed); }
+.st-closed::before { content: "■"; }
+.st-wait { color: var(--wait); }
+.st-wait::before { content: "▲"; }
+
+.more { margin-top: 1.25rem; text-align: center; }
+
+.site-footer { border-top: 1px solid var(--border); color: var(--muted); padding: 1rem 0 2rem; font-size: 0.9rem; }
+
+[hidden] { display: none !important; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+
+@media (forced-colors: active) {
+  .st::before { forced-color-adjust: auto; }
+  .button { border: 2px solid ButtonText; }
+}

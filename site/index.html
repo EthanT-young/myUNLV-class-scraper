@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>UNLV Class Finder (unofficial)</title>
+  <meta name="description" content="Search and filter UNLV class sections by course, instructor, schedule, and degree plan.">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#results-heading">Skip to results</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <h1>UNLV Class Finder</h1>
+      <p class="tagline">An unofficial, student-made view of the public UNLV class schedule. Always confirm in
+        <a href="https://my.unlv.nevada.edu/psc/lvporprd/EMPLOYEE/SA/c/SSR_STUDENT_FL.SSR_CLSRCH_MAIN_FL.GBL" rel="noreferrer">MyUNLV</a> before enrolling.</p>
+    </div>
+  </header>
+
+  <main id="main" class="wrap layout">
+    <section class="filters">
+      <h2 id="filters-heading">Search classes</h2>
+      <form id="filters" role="search" aria-labelledby="filters-heading" novalidate>
+        <div class="field">
+          <label for="term">Term</label>
+          <select id="term" name="term"></select>
+          <p class="hint" id="updated"></p>
+        </div>
+
+        <div class="field">
+          <label for="q">Course, title, instructor, or class number</label>
+          <input id="q" name="q" type="search" autocomplete="off" spellcheck="false"
+                 aria-describedby="q-hint">
+          <p class="hint" id="q-hint">Examples: <span class="nowrap">CS 135</span>, calculus, <span class="nowrap">22031</span></p>
+        </div>
+
+        <div class="field">
+          <label for="subject">Subject</label>
+          <select id="subject" name="subject"><option value="">All subjects</option></select>
+        </div>
+
+        <div class="field">
+          <label for="career">Level</label>
+          <select id="career" name="career"><option value="">All levels</option></select>
+        </div>
+
+        <div class="field">
+          <label for="attr">Requirement or attribute</label>
+          <select id="attr" name="attr" aria-describedby="attr-hint"><option value="">Any</option></select>
+          <p class="hint" id="attr-hint">For example, general education or milestone requirements.</p>
+        </div>
+
+        <details class="degree" id="degree-box">
+          <summary>My degree plan</summary>
+          <div class="degree-body">
+            <label for="degree">Courses in your degree plan</label>
+            <textarea id="degree" rows="5" aria-describedby="degree-hint"></textarea>
+            <p class="hint" id="degree-hint">Paste course codes from your degree worksheet or the UNLV catalog,
+              such as <span class="nowrap">CS 135, CS 202, MATH 181</span>. Any text works; course codes are picked out automatically.
+              This list is saved only in this browser.</p>
+            <p class="hint" id="degree-count" aria-live="polite"></p>
+            <div class="check">
+              <input id="degreeOnly" name="degreeOnly" type="checkbox">
+              <label for="degreeOnly">Only show courses in my degree plan</label>
+            </div>
+          </div>
+        </details>
+
+        <fieldset>
+          <legend>Availability</legend>
+          <div class="check">
+            <input id="open" name="open" type="checkbox">
+            <label for="open">Open sections only</label>
+          </div>
+        </fieldset>
+
+        <fieldset aria-describedby="days-hint">
+          <legend>Only classes that meet on</legend>
+          <p class="hint" id="days-hint">Leave all unchecked to allow any day. When days are checked, classes without set meeting times are hidden.</p>
+          <div class="days">
+            <div class="check"><input id="d-Mo" type="checkbox" name="days" value="Mo"><label for="d-Mo">Mon</label></div>
+            <div class="check"><input id="d-Tu" type="checkbox" name="days" value="Tu"><label for="d-Tu">Tue</label></div>
+            <div class="check"><input id="d-We" type="checkbox" name="days" value="We"><label for="d-We">Wed</label></div>
+            <div class="check"><input id="d-Th" type="checkbox" name="days" value="Th"><label for="d-Th">Thu</label></div>
+            <div class="check"><input id="d-Fr" type="checkbox" name="days" value="Fr"><label for="d-Fr">Fri</label></div>
+            <div class="check"><input id="d-Sa" type="checkbox" name="days" value="Sa"><label for="d-Sa">Sat</label></div>
+            <div class="check"><input id="d-Su" type="checkbox" name="days" value="Su"><label for="d-Su">Sun</label></div>
+          </div>
+        </fieldset>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="after">Starts at or after</label>
+            <select id="after" name="after"><option value="">Any time</option></select>
+          </div>
+          <div class="field">
+            <label for="before">Ends by</label>
+            <select id="before" name="before"><option value="">Any time</option></select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="mode">Format</label>
+            <select id="mode" name="mode" aria-describedby="mode-hint">
+              <option value="">Any format</option>
+              <option value="online">Online</option>
+              <option value="inperson">In person</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="units">Credits</label>
+            <select id="units" name="units">
+              <option value="">Any</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 or more</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="hint" id="mode-hint">Some classes don't list a format yet; they are hidden when you pick one.</p>
+
+        <div class="field">
+          <label for="sort">Sort by</label>
+          <select id="sort" name="sort">
+            <option value="code">Course number</option>
+            <option value="title">Course title</option>
+            <option value="open">Most open sections</option>
+          </select>
+        </div>
+
+        <button type="reset" class="button secondary" id="reset">Clear all filters</button>
+      </form>
+    </section>
+
+    <section class="results" aria-labelledby="results-heading">
+      <h2 id="results-heading" tabindex="-1">Results</h2>
+      <p id="status" class="status" role="status">Loading class data…</p>
+      <ol id="results" class="course-list"></ol>
+      <div class="more">
+        <button type="button" class="button" id="more" hidden>Show more courses</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Not affiliated with or endorsed by UNLV. Data comes from the public class search and may be out of date;
+        seat counts and status can change at any time.</p>
+    </div>
+  </footer>
+</body>
+</html>

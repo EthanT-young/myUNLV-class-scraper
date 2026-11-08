@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.tmp
+data/cache/
+data/*.log
+node_modules/
+test-results/
+playwright-report/
