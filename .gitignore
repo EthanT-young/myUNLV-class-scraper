@@ -11,3 +11,6 @@ playwright-report/
 
 # Scraped data is published as a GitHub release asset (see publish.sh), not committed.
 site/data/*.json
+
+# Server-local opt-in marker for the homelab auto-deployer; never committed.
+.deploy
