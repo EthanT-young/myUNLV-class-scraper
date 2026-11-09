@@ -15,7 +15,7 @@ const form = $("filters");
 const els = {
   term: $("term"), q: $("q"), subject: $("subject"), career: $("career"), attr: $("attr"),
   open: $("open"), after: $("after"), before: $("before"), mode: $("mode"), units: $("units"),
-  sort: $("sort"), degree: $("degree"), degreeOnly: $("degreeOnly"), degreeCount: $("degree-count"),
+  sort: $("sort"), live: $("live"), degree: $("degree"), degreeOnly: $("degreeOnly"), degreeCount: $("degree-count"),
   status: $("status"), results: $("results"), more: $("more"), updated: $("updated"),
 };
 const dayBoxes = [...form.querySelectorAll('input[name="days"]')];
@@ -25,6 +25,22 @@ let matches = [];         // [{course, sections}]
 let shown = 0;
 let degreeSet = new Set();
 let loadToken = 0;        // guards against out-of-order term loads
+
+// Live seat counts from the server's /api/seats (absent when the site is served statically).
+const live = {
+  available: false,       // server API reachable and has this term
+  terms: [],              // terms the API knows
+  enabled: true,          // user preference (WCAG 2.2.2: auto-updating content can be turned off)
+  seats: new Map(),       // classNbr -> info from the API
+  visible: new Set(),     // class numbers of rows currently on screen
+  offset: 0,              // server clock minus browser clock, seconds
+  observer: null,
+  timer: null,
+  lastPoll: 0,
+  pending: null,
+  failures: 0,
+  quickRetries: 0,
+};
 
 /* ---------- small helpers ---------- */
 
@@ -232,6 +248,7 @@ function runFilter() {
   else if (st.sort === "open") matches.sort((a, b) => openCount(b) - openCount(a) || byCode(a, b));
   else matches.sort(byCode);
 
+  liveForgetRows();
   els.results.replaceChildren();
   shown = 0;
   renderMore(false);
@@ -261,7 +278,9 @@ function renderMore(moveFocus) {
   const slice = matches.slice(start, start + PAGE_SIZE);
   const frag = document.createDocumentFragment();
   slice.forEach((m) => frag.append(renderCourse(m)));
+  const newRows = frag.querySelectorAll("tr[data-class]");
   els.results.append(frag);
+  if (live.observer) newRows.forEach((r) => live.observer.observe(r));
   shown += slice.length;
   els.more.hidden = shown >= matches.length;
   if (!els.more.hidden) {
@@ -337,7 +356,7 @@ function renderCourse({ course: c, sections }) {
 }
 
 function renderSections(c, sections) {
-  const showSeats = data.detailLevel === "section";
+  const showSeats = data.detailLevel === "section" || live.available;
   const labels = ["Class #", "Section", "Status", "Days and times", "Dates", "Instructor", "Room and format"]
     .concat(showSeats ? ["Seats"] : []);
   const block = (...kids) => el("span", { class: "line" }, ...kids);
@@ -350,17 +369,18 @@ function renderSections(c, sections) {
     const st = statusInfo(s.status);
     const times = s.meetings.map((m) => m.start
       ? block(
-          el("span", { class: "nowrap" },
-            el("abbr", { title: m.days.map((d) => own(DAY_LONG, d)).join(", ") }, m.days.map((d) => own(DAY_NAMES, d)).join(" ")),
-            ` ${fmtTime(m.start)}–${fmtTime(m.end)}`))
+          el("abbr", { title: m.days.map((d) => own(DAY_LONG, d)).join(", ") }, m.days.map((d) => own(DAY_NAMES, d)).join(" ")),
+          " ",
+          el("span", { class: "nowrap" }, `${fmtTime(m.start)}–${fmtTime(m.end)}`))
       : block(m.raw === "TBA" ? "No set meeting time" : (m.raw || "—")));
     const ranges = new Map(s.meetings.map((m) => [`${m.startDate || ""}|${m.endDate || ""}`, m]));
     const dates = [...ranges.values()].map(({ startDate: a, endDate: b }) => {
       const w = weeksBetween(a, b);
-      const label = a && b ? `${fmtDate(a)} – ${fmtDate(b, true)}`
+      const label = a && b
+        ? [el("span", { class: "nowrap" }, `${fmtDate(a)} –`), " ", el("span", { class: "nowrap" }, fmtDate(b, true))]
         : a ? `Starts ${fmtDate(a, true)}` : b ? `Ends ${fmtDate(b, true)}` : "Dates to be announced";
       return block(
-        el("span", { class: "nowrap" }, label),
+        el("span", {}, label),
         w ? el("span", { class: "sub" }, `${w} week${w === 1 ? "" : "s"}`) : null);
     });
     const fmt = sectionFormat(s);
@@ -369,19 +389,17 @@ function renderSections(c, sections) {
       s.classNbr,
       [`${s.section}`, el("span", { class: "sub" }, own(COMPONENTS, s.component) || s.component),
         s.session && s.session !== "Regular" ? el("span", { class: "sub" }, s.session) : null],
-      el("span", { class: `st ${st.cls}` }, st.label),
+      statusContent(s, st),
       times,
       dates,
       s.instructors.length ? s.instructors.join(", ") : "Staff",
-      [rooms === "TBA" ? "Room to be announced" : rooms || "—",
-        el("span", { class: "sub" }, s.instructionMode || FORMAT_LABELS[fmt])],
+      [rooms === "TBA" ? "TBA" : rooms || "—",
+        fmt === "unknown" && !s.instructionMode ? null : el("span", { class: "sub" }, s.instructionMode || FORMAT_LABELS[fmt])],
     ];
-    if (showSeats) {
-      values.push([s.capacity != null ? `${s.seatsAvailable} of ${s.capacity} open` : "—",
-        s.waitTotal ? el("span", { class: "sub" }, `${s.waitTotal} on wait list`) : null]);
-    }
-    return el("tr", { role: "row" }, values.map((v, i) =>
-      el("td", { role: "cell", class: i === 0 ? "num" : null },
+    if (showSeats) values.push(seatsContent(s));
+    const cellClass = (i) => (i === 0 ? "num" : i === 2 ? "status-cell" : i === 7 ? "seats-cell" : null);
+    return el("tr", { role: "row", "data-class": s.classNbr }, values.map((v, i) =>
+      el("td", { role: "cell", class: cellClass(i) },
         // Visible only in the stacked mobile layout; hidden from screen readers,
         // which already announce the column header.
         el("span", { class: "cell-label", "aria-hidden": "true" }, labels[i]),
@@ -394,6 +412,137 @@ function renderSections(c, sections) {
       el("caption", { id: captionId }, `Sections of ${c.id}`),
       el("thead", { role: "rowgroup" }, head),
       el("tbody", { role: "rowgroup" }, rows)));
+}
+
+/* ---------- live seat counts ---------- */
+
+const sub = (text) => el("span", { class: "sub" }, text);
+
+function ago(t) {
+  const secs = Math.max(0, Date.now() / 1000 + live.offset - t);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.round(secs / 60)} min ago`;
+  return `${Math.round(secs / 3600)} h ago`;
+}
+
+function checkedLabel(t) {
+  if (live.enabled) return ago(t);
+  const d = new Date((t - live.offset) * 1000);
+  return `as of ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+}
+
+function statusContent(s, st = statusInfo(s.status)) {
+  const info = live.seats.get(s.classNbr);
+  if (info && info.status && info.status !== "Not listed") st = statusInfo(info.status);
+  return el("span", { class: `st ${st.cls}` }, st.label);
+}
+
+function seatsContent(s) {
+  const info = live.seats.get(s.classNbr);
+  if (info && info.capacity != null) {
+    return [el("span", {}, `${info.available} of ${info.capacity} open`),
+      info.waitCapacity ? sub(`Wait list: ${info.waitTotal} of ${info.waitCapacity}`) : null,
+      sub(checkedLabel(info.checked))];
+  }
+  if (info && info.status === "Not listed") return "No longer listed";
+  if (s.capacity != null) return [`${s.seatsAvailable} of ${s.capacity} open`,
+    s.waitTotal ? sub(`${s.waitTotal} on wait list`) : null];
+  if (!live.available) return "—";
+  if (!live.enabled) return "Live counts are off";
+  if (live.failures >= 3) return "Unavailable right now";
+  return live.visible.has(s.classNbr) ? "Checking…" : "—";
+}
+
+// Update seat and status cells in place (no re-render, no focus changes, no announcements).
+function updateLiveCells() {
+  if (!data) return;
+  const byNbr = new Map();
+  for (const m of matches.slice(0, shown)) for (const s of m.sections) byNbr.set(s.classNbr, s);
+  for (const row of els.results.querySelectorAll("tr[data-class]")) {
+    const s = byNbr.get(row.dataset.class);
+    if (!s) continue;
+    const seats = row.querySelector(".seats-cell .cell-value");
+    if (seats) seats.replaceChildren(...[seatsContent(s)].flat().filter(Boolean).map((x) => (x instanceof Node ? x : document.createTextNode(x))));
+    const status = row.querySelector(".status-cell .cell-value");
+    if (status) status.replaceChildren(statusContent(s));
+  }
+}
+
+function liveForgetRows() {
+  if (live.observer) live.observer.disconnect();
+  live.visible.clear();
+}
+
+function schedulePoll(ms) {
+  clearTimeout(live.pending);
+  live.pending = setTimeout(pollSeats, ms);
+}
+
+async function pollSeats() {
+  if (!live.available || !live.enabled || !data || document.hidden) return;
+  const wait = live.lastPoll + 5000 - Date.now();
+  if (wait > 0) return schedulePoll(wait);
+  const nbrs = [...live.visible].slice(0, 80);
+  if (!nbrs.length) return;
+  live.lastPoll = Date.now();
+  const term = data.term;
+  try {
+    const res = await fetch(`api/seats?term=${encodeURIComponent(term)}&classes=${nbrs.join(",")}`, { cache: "no-store" });
+    if (res.status === 429) { schedulePoll(30000); return; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    if (!data || data.term !== term) return;
+    live.offset = Number(body.now) - Date.now() / 1000 || 0;
+    for (const [nbr, info] of Object.entries(body.seats || {})) {
+      if (/^\d+$/.test(nbr) && info && typeof info === "object") live.seats.set(nbr, info);
+    }
+    live.failures = 0;
+    // The server fetches on demand, so new sections arrive a few seconds later.
+    const missing = nbrs.some((n) => !live.seats.get(n)?.checked && live.seats.get(n)?.status !== "Not listed");
+    if (missing && live.quickRetries < 6) { live.quickRetries++; schedulePoll(8000); } else live.quickRetries = 0;
+  } catch {
+    live.failures++;
+  } finally {
+    updateLiveCells();
+  }
+}
+
+function setLiveTimer() {
+  clearInterval(live.timer);
+  live.timer = null;
+  if (live.available && live.enabled) {
+    live.timer = setInterval(() => { pollSeats(); updateLiveCells(); }, 30000);
+  }
+}
+
+async function initLive() {
+  try {
+    const res = await fetch("api/health", { cache: "no-store" });
+    if (!res.ok) throw new Error();
+    const health = await res.json();
+    live.terms = arr(health?.terms).map(str);
+  } catch {
+    live.terms = [];
+  }
+  const pref = store.get("liveSeats");
+  live.enabled = pref !== "0";
+  els.live.checked = live.enabled;
+  live.observer = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const nbr = e.target.dataset.class;
+      if (e.isIntersecting) live.visible.add(nbr); else live.visible.delete(nbr);
+    }
+    updateLiveCells();
+    schedulePoll(1200);
+  }, { rootMargin: "200px 0px" });
+}
+
+function liveForTerm(term) {
+  live.available = live.terms.includes(term);
+  live.seats.clear();
+  live.failures = 0;
+  $("live-box").hidden = !live.available;
+  setLiveTimer();
 }
 
 /* ---------- data loading ---------- */
@@ -464,6 +613,7 @@ async function loadTerm(code) {
   }
   if (token !== loadToken) return false;  // a newer term was chosen while this one loaded
   data = json;
+  liveForTerm(str(data.term) || code);
 
   // Rebuild the term-specific dropdowns, keeping the user's choice when it still exists.
   const refill = (sel, items) => {
@@ -537,6 +687,14 @@ function attachListeners() {
     setTimeout(() => { els.degree.value = saved; els.term.value = term; safeRunFilter(); els.q.focus(); }, 0);
   });
   els.more.addEventListener("click", () => { renderMore(true); announce(); });
+  els.live.addEventListener("change", () => {
+    live.enabled = els.live.checked;
+    store.set("liveSeats", live.enabled ? "1" : "0");
+    setLiveTimer();
+    updateLiveCells();
+    if (live.enabled) schedulePoll(0);
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) schedulePoll(500); });
   window.addEventListener("resize", debounce(updateScrollers, 200));
 }
 
@@ -546,6 +704,7 @@ async function init() {
   updateDegree();
   if (degreeSet.size) $("degree-box").open = true;
   attachListeners();
+  await initLive();
 
   let terms;
   try {

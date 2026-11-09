@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+tests
+test-results
+playwright-report
+data
+site/data
+**/__pycache__
+*.pyc
+*.log
+deploy
+*.md
+package*.json
+playwright.config.js
+publish.sh

@@ -1,0 +1,41 @@
+# UNLV Class Finder: static site + live seat API in one small container.
+# Caddy (in its own container) proxies to it over a shared Docker network.
+services:
+  unlv-enrollment-viewer:
+    build: .
+    image: unlv-enrollment-viewer:latest
+    container_name: unlv-enrollment-viewer
+    restart: unless-stopped
+    environment:
+      DATA_REPO: EthanT-young/myUNLV-class-scraper   # release "data-latest" holds the scraped data
+      DATA_POLL: "300"        # check for new data every 5 minutes
+      SEAT_WORKERS: "2"       # parallel UNLV sessions for live seat counts
+      SEAT_DELAY: "1.0"       # seconds between requests per session
+      SEAT_TTL: "120"         # re-check a viewed section at most every 2 minutes
+      RATE_PER_MIN: "30"      # API requests per minute per visitor IP
+    env_file:
+      - path: .env            # optional: GITHUB_TOKEN=... if the repo is private
+        required: false
+    volumes:
+      - data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    networks:
+      - caddy
+
+volumes:
+  data:
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:-caddy}   # the Docker network your Caddy container is on

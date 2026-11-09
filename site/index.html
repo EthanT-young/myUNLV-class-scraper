@@ -78,6 +78,15 @@
           </div>
         </fieldset>
 
+        <div class="check-block" id="live-box" hidden>
+          <div class="check">
+            <input id="live" name="live" type="checkbox" checked aria-describedby="live-hint">
+            <label for="live">Live seat counts</label>
+          </div>
+          <p class="hint" id="live-hint">Checks seats for the classes on your screen about once a minute.
+            Turn this off to stop the updates.</p>
+        </div>
+
         <fieldset aria-describedby="days-hint">
           <legend>Only classes that meet on</legend>
           <p class="hint" id="days-hint">Leave all unchecked to allow any day. When days are checked, classes without set meeting times are hidden.</p>

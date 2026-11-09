@@ -1,0 +1,8 @@
+# Add inside your existing site block, e.g.  yourdomain.com { ... }
+# The trailing-slash redirect matters: the page loads data/ and api/ with relative URLs.
+redir /projects/unlvEnrollmentViewer /projects/unlvEnrollmentViewer/ 308
+
+handle_path /projects/unlvEnrollmentViewer/* {
+	encode zstd gzip
+	reverse_proxy unlv-enrollment-viewer:8080
+}

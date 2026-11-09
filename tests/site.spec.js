@@ -7,7 +7,9 @@ const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 async function ready(page, url = "/") {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  // In static mode the live-seat API is absent, so its 404 is expected; any other 404 is a bug.
+  page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource.*404/.test(m.text())) errors.push(m.text()); });
+  page.on("response", (r) => { if (r.status() === 404 && !new URL(r.url()).pathname.endsWith("/api/health")) errors.push(`404 ${r.url()}`); });
   await page.goto(url);
   await expect(page.locator("#status")).toContainText(/match/);
   return errors;

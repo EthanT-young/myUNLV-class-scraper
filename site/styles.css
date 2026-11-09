@@ -163,7 +163,9 @@ legend { padding: 0 0.25rem; }
 .course dl { margin: 0.5rem 0; }
 .course dt { font-weight: 600; }
 .course dd { margin: 0 0 0.5rem; white-space: pre-line; }
-.course dd, .course details p, .course h3, .tag, td { overflow-wrap: anywhere; }
+.course dd, .course details p, .course h3, .tag { overflow-wrap: anywhere; }
+td { overflow-wrap: break-word; }
+td.num, .seats-cell .cell-value > :first-child { white-space: nowrap; }
 
 .match-note { margin: 0.5rem 0; color: var(--muted); font-size: 0.9rem; }
 

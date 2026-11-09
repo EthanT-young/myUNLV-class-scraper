@@ -5,7 +5,16 @@ whole schedule once and puts it on a fast, searchable page instead.
 
 A scraper reads UNLV's public class search, which is open to guests, so you don't need to
 log in or hand over your NSHE password. A small website then lets you search and filter
-everything it collected.
+everything it collected, and shows live seat counts for the classes you're looking at.
+
+The work is split between two machines:
+
+1. A personal computer does the heavy lifting. It scrapes the whole catalog and uploads
+   the result to this repo's `data-latest` GitHub release with `./publish.sh`.
+2. A small server runs one Docker container that serves the site, installs each new data
+   release on its own, and checks seat counts for the sections visitors have on screen.
+
+Setting up the server is covered in [deploy/README.md](deploy/README.md).
 
 This is a student project and isn't affiliated with UNLV. Always double-check in MyUNLV
 before you enroll.
@@ -21,12 +30,28 @@ python3 -m scraper --term 2272
 # Or refresh just a couple of subjects
 python3 -m scraper --term 2272 --subjects CS,MATH
 
-# Then start a local server and open http://localhost:8000
-python3 -m http.server -d site 8000
+# Then run the site with live seat counts and open http://localhost:8080
+python3 -m server
 ```
 
-Opening `index.html` straight from your file browser won't work, because the page loads
-its data with `fetch()`. Use the local server.
+`python3 -m http.server -d site 8000` also works if you only want the static site. Either
+way you need a local server: opening `index.html` straight from your file browser won't
+work, because the page loads its data with `fetch()`.
+
+## Publishing data
+
+Scraped data isn't committed to git, so the repo doesn't grow with every scrape. Instead,
+`./publish.sh` scrapes, runs the scraper tests, and uploads `site/data` as a compressed
+archive (about 550 KB) to the `data-latest` release, replacing the previous one. The
+server picks it up within 5 minutes.
+
+```bash
+gh auth login              # once; needs the GitHub CLI
+./publish.sh --term 2272   # scrape and publish one term
+./publish.sh --skip-scrape # publish the data you already have
+```
+
+It won't publish if the scraper reports a failed subject, unless you add `--allow-failures`.
 
 ## The scraper
 
@@ -84,7 +109,8 @@ You can:
   meeting days, start and end time, online or in person, and credits
 - See each section's status, days and times, dates (with the length in weeks),
   instructor and room
-- See seat counts, if the data was scraped with `--details section`
+- See live seat counts and wait lists when the site runs on the server. Only sections on
+  your screen are checked, about once a minute, and you can turn this off
 - Bookmark or share a search, since your filters are saved in the URL
 
 The "My degree plan" box takes the course codes from your degree worksheet or the
@@ -106,13 +132,22 @@ The site aims for WCAG 2.2 AA. In practice that means:
 The tests include automated axe checks. Before going public, it's still worth a manual
 pass with a screen reader such as NVDA or VoiceOver.
 
+## Live seat counts
+
+`python3 -m server` serves the site plus `/api/seats`. The browser sends the class numbers
+on screen, and the server returns what it knows and queues a refresh for anything older
+than 2 minutes. Its worker sessions then refresh the most-viewed courses first: one search
+per course for every section's status, then a detail page per section for seat counts.
+Many visitors looking at the same class cost the same as one. The number of sessions times
+the delay between requests caps the load on UNLV however busy the site gets.
+
 ## Running the tests
 
 ```bash
 npm install && npx playwright install chromium   # first time only
 npm test               # everything
 npm run test:site      # browser and accessibility tests
-npm run test:scraper   # scraper tests (offline, no requests to UNLV)
+npm run test:scraper   # scraper and server tests (offline, no requests to UNLV)
 ```
 
 ## What's next

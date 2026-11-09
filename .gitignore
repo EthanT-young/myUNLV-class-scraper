@@ -6,3 +6,6 @@ data/*.log
 node_modules/
 test-results/
 playwright-report/
+
+# Scraped data is published as a GitHub release asset (see publish.sh), not committed.
+site/data/*.json

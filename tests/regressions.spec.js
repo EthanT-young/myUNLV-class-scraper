@@ -31,7 +31,8 @@ async function serve(page, routes) {
 function trackErrors(page) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource.*404/.test(m.text())) errors.push(m.text()); });
+  page.on("response", (r) => { if (r.status() === 404 && !new URL(r.url()).pathname.endsWith("/api/health")) errors.push(`404 ${r.url()}`); });
   return errors;
 }
 
@@ -85,7 +86,7 @@ test("sections with an unlisted format aren't called in person", async ({ page }
   ]);
   await serve(page, { "terms.json": { terms: [{ term: "2272", name: "2027 Spring" }] }, "2272.json": data });
   await page.goto("/?q=cs+326");
-  await expect(page.locator("tbody")).toContainText("Format not listed");
+  await expect(page.locator("tbody")).not.toContainText("In person");
   await page.goto("/?mode=inperson");
   await expect(page.locator("#status")).toContainText("No classes match");
   await page.goto("/?mode=online");

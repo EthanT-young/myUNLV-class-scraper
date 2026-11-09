@@ -53,14 +53,26 @@ def load_json(path: Path, default):
         return default
 
 
-def write_json(path: Path, data, compact=False):
+def dump_term(data: dict) -> str:
+    """Term data as JSON with one course per line, so git stores small diffs
+    between scrapes instead of a whole new multi-megabyte line."""
+    compact = {"ensure_ascii": False, "separators": (",", ":")}
+    head = json.dumps({k: v for k, v in data.items() if k != "courses"}, **compact)
+    lines = ",\n".join(json.dumps(c, **compact) for c in data.get("courses", []))
+    return head[:-1] + (',' if len(head) > 2 else '') + '"courses":[\n' + lines + "\n]}\n"
+
+
+def write_json(path: Path, data, compact=False, term_file=False):
     """Atomic write: unique temp file in the same directory, fsync, rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
     try:
         with os.fdopen(fd, "w") as f:
-            json.dump(data, f, ensure_ascii=False,
-                      separators=(",", ":") if compact else None, indent=None if compact else 1)
+            if term_file:
+                f.write(dump_term(data))
+            else:
+                json.dump(data, f, ensure_ascii=False,
+                          separators=(",", ":") if compact else None, indent=None if compact else 1)
             f.flush()
             os.fsync(f.fileno())
         os.chmod(tmp, 0o644)
@@ -346,7 +358,7 @@ def main(argv=None):
             exit_code = 1
             continue
 
-        write_json(out_path, data, compact=True)
+        write_json(out_path, data, term_file=True)
         known[term] = {"term": term, "name": name, "updated": data["updated"],
                        "courses": len(data["courses"]), "sections": new_n}
         log(f"  wrote {out_path.relative_to(ROOT)}: {len(data['courses'])} courses, {new_n} sections"
