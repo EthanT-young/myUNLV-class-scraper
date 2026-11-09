@@ -1,5 +1,7 @@
 # UNLV Class Finder
 
+**Live site: [ethantyoung.com/projects/unlvEnrollmentViewer](https://ethantyoung.com/projects/unlvEnrollmentViewer)**
+
 Looking up one class in MyUNLV takes 20 to 30 seconds of clicking. This project grabs the
 whole schedule once and puts it on a fast, searchable page instead.
 
