@@ -1,4 +1,6 @@
 .git
+.env
+.env.*
 .gitignore
 node_modules
 tests

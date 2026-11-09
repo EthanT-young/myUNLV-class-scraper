@@ -15,7 +15,7 @@ import time
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from .seats import Catalog, SeatTracker
 
@@ -59,6 +59,7 @@ class Handler(SimpleHTTPRequestHandler):
     limiter: RateLimiter
     data_dir: Path
     updater = None
+    timeout = 30  # drop idle or very slow connections
 
     # -- helpers -------------------------------------------------------------
     def client_ip(self) -> str:
@@ -95,15 +96,13 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/seats":
             return self.api_seats()
         if path == "/api/health":
-            body = {"ok": True, "terms": self.catalog.terms, **self.tracker.status()}
+            body = {"ok": bool(self.catalog.terms), "terms": self.catalog.terms, **self.tracker.status()}
             if self.updater:
                 body["data"] = self.updater.status
+                body["ok"] = body["ok"] and not self.updater.status["lastError"]
             return self.send_json(200, body)
         if path.startswith("/api/"):
             return self.send_json(404, {"error": "not found"})
-        # Static files: no directory listings, no dotfiles.
-        if any(part.startswith(".") for part in path.split("/")):
-            return self.send_error(HTTPStatus.NOT_FOUND)
         return super().do_GET()
 
     def do_HEAD(self):
@@ -115,6 +114,9 @@ class Handler(SimpleHTTPRequestHandler):
         # /data/<name>.json comes from the data directory (kept up to date by the
         # updater); everything else from the site directory.
         p = urlsplit(path).path
+        # Static files: no dotfiles, checked after percent-decoding (GET and HEAD).
+        if any(part.startswith(".") for part in unquote(p).replace("\\", "/").split("/")):
+            return str(self.data_dir / ".missing")
         if p.startswith("/data/"):
             name = p[len("/data/"):]
             if re.fullmatch(r"[\w-]+\.json", name):

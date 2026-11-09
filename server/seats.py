@@ -54,7 +54,7 @@ class Catalog:
 
     def refresh(self) -> bool:
         try:
-            files = {p.name: p.stat().st_mtime for p in self.data_dir.glob("*.json")}
+            files = {p.name: p.stat().st_mtime for p in self.data_dir.glob("*.json") if not p.name.startswith(".")}
         except OSError:
             return False
         if files == self._mtimes:

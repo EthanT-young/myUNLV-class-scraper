@@ -23,7 +23,8 @@ from pathlib import Path
 
 log = logging.getLogger("updater")
 
-NAME_RE = re.compile(r"[\w.-]+\.json")
+NAME_RE = re.compile(r"[\w-]+\.json")
+MAX_UNPACKED = 64 * 1024 * 1024
 MAX_BYTES = 100 * 1024 * 1024
 API = "https://api.github.com"
 
@@ -59,8 +60,10 @@ class DataUpdater:
         self.status["lastCheck"] = time.time()
         url = f"{API}/repos/{self.repo}/releases/tags/{self.tag}"
         try:
-            with self._request(url, "application/vnd.github+json", self.etag) as r:
-                self.etag = r.headers.get("ETag")
+            # Without data, always fetch in full so a failed install is retried.
+            etag = self.etag if (self.data_dir / "terms.json").exists() else None
+            with self._request(url, "application/vnd.github+json", etag) as r:
+                new_etag = r.headers.get("ETag")
                 release = json.load(r)
         except urllib.error.HTTPError as e:
             if e.code == 304:
@@ -70,6 +73,7 @@ class DataUpdater:
         if not asset:
             raise RuntimeError(f"release {self.tag} has no asset {self.asset}")
         if asset["id"] == self.installed_id and (self.data_dir / "terms.json").exists():
+            self.etag = new_etag
             return False
         if asset.get("size", 0) > MAX_BYTES:
             raise RuntimeError("asset too large")
@@ -82,6 +86,7 @@ class DataUpdater:
         self.installed_id = asset["id"]
         self.state_file.write_text(json.dumps({"asset_id": asset["id"], "updated": asset.get("updated_at")}))
         self.status["lastUpdate"] = time.time()
+        self.etag = new_etag  # only after a successful install, so failures are retried
         log.info("installed data from %s (%s)", self.tag, asset.get("updated_at"))
         return True
 
@@ -89,7 +94,10 @@ class DataUpdater:
         """Validate every file, then move them into place (terms.json last)."""
         files: dict[str, bytes] = {}
         with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
-            for m in tar.getmembers():
+            members = tar.getmembers()
+            if sum(m.size for m in members if m.isfile()) > MAX_UNPACKED:
+                raise RuntimeError("tarball unpacks too large")
+            for m in members:
                 name = m.name.removeprefix("./")
                 if not m.isfile() or not NAME_RE.fullmatch(name):
                     continue  # ignore anything that isn't a plain top-level .json file

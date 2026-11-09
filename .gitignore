@@ -4,6 +4,8 @@ __pycache__/
 data/cache/
 data/*.log
 node_modules/
+.env
+.env.*
 test-results/
 playwright-report/
 

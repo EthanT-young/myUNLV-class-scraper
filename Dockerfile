@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DATA_DIR=/data \
     PORT=8080
 
-RUN pip install --no-cache-dir "requests==2.31.0" \
+RUN pip install --no-cache-dir "requests==2.32.4" \
  && useradd --system --uid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin app \
  && mkdir /data && chown app /data
 
