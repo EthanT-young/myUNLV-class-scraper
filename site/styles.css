@@ -1,7 +1,9 @@
 /* Colors are checked for at least 4.5:1 contrast for text and 3:1 for
    borders/focus indicators against their backgrounds (WCAG 2.2 AA). */
+/* Theme: follows the system setting unless the header picker sets
+   <html data-theme="light|dark"> (theme.js, saved in localStorage). */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #ffffff;
   --surface: #f6f6f7;
   --text: #1b1b1f;
@@ -17,22 +19,41 @@
   --row-alt: #f6f6f7;
 }
 
+/* Dark tokens appear twice: once for the system setting, once for the picker. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #141417;
     --surface: #1f1f24;
     --text: #ececf0;
-    --muted: #b6b6bf;        /* 9:1 on --bg */
-    --border: #7d7d88;       /* 4.2:1 */
+    --muted: #b6b6bf;          /* 9:1 on --bg */
+    --border: #7d7d88;         /* 4.2:1 */
     --brand: #8c0010;
     --brand-text: #ffffff;
-    --link: #ff9a9a;         /* 8.6:1 */
-    --focus: #8ab4ff;        /* 8.7:1 */
+    --link: #ff9a9a;           /* 8.6:1 */
+    --focus: #8ab4ff;          /* 8.7:1 */
     --open: #7fd99a;
     --closed: #ff9a9a;
     --wait: #f2c46d;
     --row-alt: #1b1b20;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141417;
+  --surface: #1f1f24;
+  --text: #ececf0;
+  --muted: #b6b6bf;          /* 9:1 on --bg */
+  --border: #7d7d88;         /* 4.2:1 */
+  --brand: #8c0010;
+  --brand-text: #ffffff;
+  --link: #ff9a9a;           /* 8.6:1 */
+  --focus: #8ab4ff;          /* 8.7:1 */
+  --open: #7fd99a;
+  --closed: #ff9a9a;
+  --wait: #f2c46d;
+  --row-alt: #1b1b20;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -70,6 +91,11 @@ a { color: var(--link); text-underline-offset: 0.15em; }
 
 .site-header { background: var(--brand); color: var(--brand-text); padding: 1rem 0; }
 .site-header h1 { margin: 0; font-size: 1.75rem; }
+.header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; }
+.theme-field { display: flex; align-items: center; gap: 0.5rem; }
+/* White border: stays visible (3:1+) against the red header in both themes. */
+.site-header select { width: auto; border: 2px solid var(--brand-text); }
+.site-header select:focus-visible { outline-color: var(--brand-text); }
 
 .layout {
   display: grid;

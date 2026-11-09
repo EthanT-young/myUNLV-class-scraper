@@ -40,6 +40,112 @@ test("axe: dark mode", async ({ page }) => {
   await axe(page);
 });
 
+const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+const LIGHT_BG = "rgb(255, 255, 255)";
+const DARK_BG = "rgb(20, 20, 23)";
+
+test("theme: follows the system setting by default", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await ready(page);
+  await expect(page.locator("#theme-picker")).toHaveValue("system");
+  expect(await bg(page)).toBe(DARK_BG);
+  await page.emulateMedia({ colorScheme: "light" });
+  expect(await bg(page)).toBe(LIGHT_BG);
+});
+
+test("theme: picker overrides the system setting and is remembered", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await ready(page);
+  await page.selectOption("#theme-picker", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await bg(page)).toBe(DARK_BG);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
+
+  await page.reload();
+  await expect(page.locator("#theme-picker")).toHaveValue("dark");
+  expect(await bg(page)).toBe(DARK_BG);
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.selectOption("#theme-picker", "light");
+  expect(await bg(page)).toBe(LIGHT_BG);
+
+  await page.selectOption("#theme-picker", "system");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.*/);
+  expect(await page.evaluate(() => localStorage.getItem("unlv:theme"))).toBeNull();
+  expect(await bg(page)).toBe(DARK_BG);
+});
+
+const scheme = (page) => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+
+test("theme: saved choice applies on the first frame", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("unlv:theme", "dark");
+    // Snapshot the very first frame; a deferred or late theme.js would miss it.
+    requestAnimationFrame(() => {
+      const root = document.documentElement;
+      window.__first = { theme: root.getAttribute("data-theme"), bg: getComputedStyle(document.body).backgroundColor };
+    });
+  });
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await page.waitForFunction(() => window.__first);
+  expect(await page.evaluate(() => window.__first)).toEqual({ theme: "dark", bg: DARK_BG });
+});
+
+test("theme: color-scheme matches the theme, so native controls match", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await ready(page);
+  expect(await scheme(page)).toBe("dark");
+  await page.selectOption("#theme-picker", "light");
+  expect(await scheme(page)).toBe("light");
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.selectOption("#theme-picker", "system");
+  expect(await scheme(page)).toBe("light");
+});
+
+test("theme: survives Clear all filters and stays out of the URL", async ({ page }) => {
+  await ready(page);
+  await page.selectOption("#theme-picker", "dark");
+  await page.click("#reset");
+  await expect(page.locator("#theme-picker")).toHaveValue("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(page.url()).not.toContain("theme");
+});
+
+test("theme: works when storage is blocked", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", { get() { throw new DOMException("blocked", "SecurityError"); } });
+  });
+  const errors = await ready(page);
+  await page.selectOption("#theme-picker", "dark");
+  expect(await bg(page)).toBe(DARK_BG);
+  expect(errors).toEqual([]);
+});
+
+test("theme: ignores junk in storage", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("unlv:theme", "neon"));
+  await page.emulateMedia({ colorScheme: "light" });
+  await ready(page);
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.*/);
+  await expect(page.locator("#theme-picker")).toHaveValue("system");
+});
+
+test("axe: dark picked while the system is light", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await ready(page);
+  await page.selectOption("#theme-picker", "dark");
+  await page.locator(".course details").first().evaluate((d) => { d.open = true; });
+  await axe(page);
+});
+
+test("axe: light picked while the system is dark", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await ready(page);
+  await page.selectOption("#theme-picker", "light");
+  await page.locator(".course details").first().evaluate((d) => { d.open = true; });
+  await axe(page);
+});
+
 test("axe: no results state", async ({ page }) => {
   await ready(page);
   await page.fill("#q", "zzzznotacourse");

@@ -7,6 +7,8 @@
   <meta name="referrer" content="no-referrer">
   <title>UNLV Class Finder</title>
   <meta name="description" content="Search and filter UNLV class sections by course, instructor, schedule, and degree plan.">
+  <!-- Not deferred: applies the saved theme before the page is drawn. -->
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
@@ -14,8 +16,16 @@
   <a class="skip-link" href="#results-heading">Skip to results</a>
 
   <header class="site-header">
-    <div class="wrap">
+    <div class="wrap header-row">
       <h1>UNLV Class Finder</h1>
+      <div class="theme-field">
+        <label for="theme-picker">Theme</label>
+        <select id="theme-picker" autocomplete="off">
+          <option value="system">Match system</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
     </div>
   </header>
 
