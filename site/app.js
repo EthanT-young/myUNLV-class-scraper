@@ -630,7 +630,7 @@ async function loadTerm(code) {
   const updated = new Date(data.updated);
   els.updated.textContent = Number.isNaN(updated.getTime()) ? ""
     : `Data updated ${updated.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.`;
-  document.title = `${str(data.name) || "Class"} classes — UNLV Class Finder (unofficial)`;
+  document.title = `${str(data.name) || "Class"} classes — UNLV Class Finder`;
   return true;
 }
 

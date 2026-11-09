@@ -1,4 +1,4 @@
-# UNLV Class Finder (unofficial)
+# UNLV Class Finder
 
 Looking up one class in MyUNLV takes 20 to 30 seconds of clicking. This project grabs the
 whole schedule once and puts it on a fast, searchable page instead.
@@ -15,9 +15,6 @@ The work is split between two machines:
    release on its own, and checks seat counts for the sections visitors have on screen.
 
 Setting up the server is covered in [deploy/README.md](deploy/README.md).
-
-This is a student project and isn't affiliated with UNLV. Always double-check in MyUNLV
-before you enroll.
 
 ## Getting started
 
@@ -126,11 +123,9 @@ The site aims for WCAG 2.2 AA. In practice that means:
   of the result count that isn't repeated on every keystroke.
 - Status is shown with a shape as well as a color: ● Open, ■ Closed, ▲ Wait list.
 - Text and controls have enough contrast in light and dark mode, and the site works in
-  Windows high-contrast mode.
+  Windows high-contrast mode. The theme follows your system setting, or you can pick
+  light or dark from the menu in the header.
 - On a phone, each section turns into a stacked card, so there's no sideways scrolling.
-
-The tests include automated axe checks. Before going public, it's still worth a manual
-pass with a screen reader such as NVDA or VoiceOver.
 
 ## Live seat counts
 
@@ -154,10 +149,3 @@ npm run test:scraper   # scraper and server tests (offline, no requests to UNLV)
 
 - Pulling degree requirements straight from the UNLV catalog, so you don't have to paste
   them in
-
-## Please be considerate
-
-The scraper only reads public pages, identifies itself honestly in its User-Agent, and
-caches anything that rarely changes. If you plan to run it on a schedule or publish the
-site, check UNLV's IT acceptable-use policy first, and tell visitors the site is
-unofficial.

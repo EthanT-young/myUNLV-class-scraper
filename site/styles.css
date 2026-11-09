@@ -70,9 +70,6 @@ a { color: var(--link); text-underline-offset: 0.15em; }
 
 .site-header { background: var(--brand); color: var(--brand-text); padding: 1rem 0; }
 .site-header h1 { margin: 0; font-size: 1.75rem; }
-.site-header .tagline { margin: 0.25rem 0 0; }
-.site-header a { color: var(--brand-text); }
-.site-header a:focus-visible { outline-color: var(--brand-text); }
 
 .layout {
   display: grid;
